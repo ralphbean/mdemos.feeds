@@ -35,8 +35,8 @@ class MokshaFeedConsumer(Consumer):
 
     topic = 'moksha.feeds'
 
-    def __init__(self):
-        super(MokshaFeedConsumer, self).__init__()
+    def __init__(self, hub):
+        super(MokshaFeedConsumer, self).__init__(hub)
         self.feed_storage = Shove(config.get('feed_store', 'simple://'),
                                   config.get('feed_cache', 'simple://'),
                                   compress=True)
