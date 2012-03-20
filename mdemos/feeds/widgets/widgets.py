@@ -29,22 +29,23 @@ it is viewing.
 """
 
 from tg import config
-from paste.deploy.converters import asbool
 
-from tw.api import js_callback, Widget, JSLink, CSSLink
-from tw.jquery import jquery_js, jQuery
-from tw.jquery.dynatree import Dynatree
+import tw2.core as twc
+from tw2.core import js_callback, JSLink, CSSLink
+from tw2.jquery import jquery_js, jQuery
+from tw2.jqplugins.dynatree import DynaTreeWidget
 from uuid import uuid4
 
 from moksha.api.widgets.live import LiveWidget
 
-class MokshaAjaxFeedTree(Dynatree):
+
+class MokshaAjaxFeedTree(DynaTreeWidget):
     title = 'Moksha Ajax Feed Tree'
     rootVisible = True
     persist = True
     initAjax = {
-            'url': '/apps/feeds/init_tree',
-            'data': {'key': 'root'}
+        'url': '/apps/feeds/init_tree',
+        'data': {'key': 'root'}
     }
     onActivate = js_callback("""
         function(dtnode) {
@@ -53,13 +54,13 @@ class MokshaAjaxFeedTree(Dynatree):
     """.replace('\n', ''))
 
 
-class MokshaAjaxFeedEntriesTree(Dynatree):
+class MokshaAjaxFeedEntriesTree(DynaTreeWidget):
     rootVisible = False
     persist = True
     onActivate = js_callback("""function(dtnode) { $('#BottomPane').load('/apps/feeds/get_entry?key=' + dtnode.data.key); }""")
 
 
-class MokshaLiveFeedTree(Dynatree):
+class MokshaLiveFeedTree(DynaTreeWidget):
     title = 'Moksha Live Feed Tree'
     rootVisible = True
     persist = True
@@ -70,32 +71,12 @@ class MokshaLiveFeedTree(Dynatree):
     }
     onActivate = js_callback("function(dtnode) { moksha.send_message('moksha.feeds', {action: 'get_feed', 'key': dtnode.data.key, topic: moksha_feed_topic}); }")
 
-
-    #def __init__(self, *args, **kw):
-    #    Dynatree.__init__(self, *args, **kw)
-    #    self.template += """
-    #        <script>
-    #            var moksha_feed_topic = "${topic}";
-    #        </script>
-    #    """
-    #    #LiveWidget.__init__(self, *args, **kw)
-
-    def update_params(self, d):
-        # the unique queue to use over our stomp TCPSocket
-        d['topic'] = str(uuid4())
-        Dynatree.update_params(self, d)
-        # apparently the dynatree calls our live widget's update_params for us
-        #LiveWidget.update_params(self, d)
-
-    #onLazyRead = js_callback("""function(dtnode) {
-    #    dtnode.appendAjax({url: '/apps/feeds/get_feed',
-    #                       data: {key: dtnode.data.key, mode: 'all'},
-    #                       cache: false
-    #                      });
-    #}""".replace('\n', ''))
+    def prepare(self):
+        self.topic = str(uuid4())
+        super(MokshaLiveFeedTree, self).prepare()
 
 
-class MokshaLiveFeedEntriesTree(Dynatree):
+class MokshaLiveFeedEntriesTree(DynaTreeWidget):
     rootVisible = False
     persist = True
     onActivate = js_callback("""
@@ -112,16 +93,16 @@ class MokshaLiveFeedEntriesTree(Dynatree):
 
 
 ## Load our feed tree widgets.
-feedtree_engine = config.get('moksha.feedtree.engine', 'live')
+feedtree_engine = config.get('mdemos.feeds.feedtree.engine', 'live')
 if feedtree_engine == 'live':   # Live widgets
-    feed_tree = MokshaLiveFeedTree('feed_tree')
-    feed_entries_tree = MokshaLiveFeedEntriesTree('feed_entries_tree')
+    feed_tree = MokshaLiveFeedTree(id='feed_tree')
+    feed_entries_tree = MokshaLiveFeedEntriesTree(id='feed_entries_tree')
 elif feedtree_engine == 'ajax': # Ajax widgets
-    feed_tree = MokshaAjaxFeedTree('feed_tree')
-    feed_entries_tree = MokshaAjaxFeedEntriesTree('feed_entries_tree')
+    feed_tree = MokshaAjaxFeedTree(id='feed_tree')
+    feed_entries_tree = MokshaAjaxFeedEntriesTree(id='feed_entries_tree')
 
 splitter_js = JSLink(filename='static/splitter.js',
-                     javascript=[jquery_js],
+                     resources=[jquery_js],
                      modname=__name__)
 
 splitter_css = CSSLink(filename='static/main.css',
@@ -131,19 +112,23 @@ splitter_css = CSSLink(filename='static/main.css',
 
 class MokshaFeedReaderWidget(LiveWidget):
     name = 'Moksha Feed Reader'
-    params = ['topic']
     topic = 'moksha.feeds' # will get replaced by a unique uuid at render-time
-    template = 'mako:moksha.widgets.feeds.templates.feedreader'
-    children = [feed_tree, feed_entries_tree]
-    javascript = [splitter_js]
-    css = [splitter_css]
+    template = 'mako:mdemos.feeds.widgets.templates.feedreader'
+
+    # Children
+    feed_tree = twc.Variable(default=feed_tree)
+    feed_entries_tree = twc.Variable(default=feed_entries_tree)
+
+    resources = [splitter_js, splitter_css]
+
     container_options = {
-            'top': 50,
-            'left': 50,
-            'height': 600,
-            'width': 890,
-            'icon': 'browser.png',
-            }
+        'top': 50,
+        'left': 50,
+        'height': 600,
+        'width': 890,
+        'icon': 'browser.png',
+    }
+
     onmessage = """
       if (json.action == 'get_feed') {
           var tree = $("#moksha_feedreader_feed_entries_tree").dynatree("getRoot");
@@ -157,10 +142,10 @@ class MokshaFeedReaderWidget(LiveWidget):
       }
     """
 
-    def update_params(self, d):
-        d['topic'] = str(uuid4())
-        super(MokshaFeedReaderWidget, self).update_params(d)
-        self.add_call(jQuery('#' + d.id).splitter({
+    def prepare(self):
+        self.topic = str(uuid4())
+        super(MokshaFeedReaderWidget, self).prepare()
+        self.add_call(jQuery('#' + self.id).splitter({
             'splitVertical': True,
             'outline': True,
             'sizeLeft': True,
@@ -173,9 +158,4 @@ class MokshaFeedReaderWidget(LiveWidget):
             'accessKey': "H",
             }))
 
-if asbool(config.get('moksha.use_tw2', False)):
-    raise NotImplementedError(__name__ + " is not ready for tw2")
-else:
-    pass  # nothing in this file has changed yet.
-
-moksha_feedreader = MokshaFeedReaderWidget('moksha_feedreader')
+moksha_feedreader = MokshaFeedReaderWidget(id='moksha_feedreader')

@@ -29,7 +29,7 @@ from orbited import json
 from kitchen.text.converters import to_unicode
 
 from moksha.lib.base import Controller
-from moksha.widgets.feeds import feed_entries_tree, moksha_feedreader
+from mdemos.feeds.widgets import feed_entries_tree, moksha_feedreader
 
 from tg import expose, validate
 from formencode import validators
@@ -38,7 +38,7 @@ log = logging.getLogger('moksha.hub')
 
 class FeedController(Controller):
 
-    @expose('mako:moksha.apps.mokshafeeds.templates.index')
+    @expose('mako:mdemos.feeds.templates.index')
     @validate({'name': validators.UnicodeString()})
     def index(self, name='world', *args, **kw):
         return dict(name=name)
