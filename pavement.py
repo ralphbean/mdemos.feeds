@@ -25,6 +25,7 @@ options(
         install_requires=[
             "moksha>=0.7.0a",
             "tw2.jqplugins.dynatree",
+            "tw2.jqplugins.cookies",
         ],
         entry_points={
             'moksha.producer': (

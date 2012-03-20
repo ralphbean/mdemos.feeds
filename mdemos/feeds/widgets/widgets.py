@@ -34,6 +34,7 @@ import tw2.core as twc
 from tw2.core import js_callback, JSLink, CSSLink
 from tw2.jquery import jquery_js, jQuery
 from tw2.jqplugins.dynatree import DynaTreeWidget
+from tw2.jqplugins.cookies import jquery_cookies_js
 from uuid import uuid4
 
 from moksha.api.widgets.live import LiveWidget
@@ -41,35 +42,43 @@ from moksha.api.widgets.live import LiveWidget
 
 class MokshaAjaxFeedTree(DynaTreeWidget):
     title = 'Moksha Ajax Feed Tree'
-    rootVisible = True
-    persist = True
-    initAjax = {
-        'url': '/apps/feeds/init_tree',
-        'data': {'key': 'root'}
+    options = {
+        'rootVisible': True,
+        'persist': True,
+        'initAjax': {
+            'url': '/apps/feeds/init_tree',
+            'data': {'key': 'root'},
+        },
+        'onActivate': js_callback("""
+            function(dtnode) {
+              $('#TopPane').load('/apps/feeds/get_entries?key=' + dtnode.data.key.replace(/ /, ''));
+            }
+        """.replace('\n', '')),
     }
-    onActivate = js_callback("""
-        function(dtnode) {
-          $('#TopPane').load('/apps/feeds/get_entries?key=' + dtnode.data.key.replace(/ /, ''));
-        }
-    """.replace('\n', ''))
 
 
 class MokshaAjaxFeedEntriesTree(DynaTreeWidget):
-    rootVisible = False
-    persist = True
-    onActivate = js_callback("""function(dtnode) { $('#BottomPane').load('/apps/feeds/get_entry?key=' + dtnode.data.key); }""")
+    options = {
+        'rootVisible': False,
+        'persist': True,
+        'onActivate': js_callback("""function(dtnode) {
+          $('#BottomPane').load('/apps/feeds/get_entry?key='+dtnode.data.key);
+         }"""),
+    }
 
 
 class MokshaLiveFeedTree(DynaTreeWidget):
     title = 'Moksha Live Feed Tree'
-    rootVisible = True
-    persist = True
-    fx = {'height': 'toggle', 'duration': 200}
-    initAjax = {
+    options = {
+        'rootVisible': True,
+        'persist': True,
+        'fx': {'height': 'toggle', 'duration': 200},
+        'initAjax': {
             'url': '/apps/feeds/init_tree',
             'data': {'key': 'root'}
+        },
+        'onActivate': js_callback("function(dtnode) { moksha.send_message('moksha.feeds', {action: 'get_feed', 'key': dtnode.data.key, topic: moksha_feed_topic}); }")
     }
-    onActivate = js_callback("function(dtnode) { moksha.send_message('moksha.feeds', {action: 'get_feed', 'key': dtnode.data.key, topic: moksha_feed_topic}); }")
 
     def prepare(self):
         self.topic = str(uuid4())
@@ -77,19 +86,21 @@ class MokshaLiveFeedTree(DynaTreeWidget):
 
 
 class MokshaLiveFeedEntriesTree(DynaTreeWidget):
-    rootVisible = False
-    persist = True
-    onActivate = js_callback("""
-        function(dtnode) {
-            moksha.send_message('moksha.feeds', {
-                'action': 'get_entry',
-                'key': dtnode.data.key,
-                 topic: moksha_feed_topic
-             });
+    options = {
+        'rootVisible': False,
+        'persist': True,
+        'onActivate': js_callback("""
+            function(dtnode) {
+                moksha.send_message('moksha.feeds', {
+                    'action': 'get_entry',
+                    'key': dtnode.data.key,
+                     topic: moksha_feed_topic
+                 });
 
-            /* Unsubscribe from current feed, subscribe to new one */
-        }
-    """.replace('\n', ''))
+                /* Unsubscribe from current feed, subscribe to new one */
+            }
+        """.replace('\n', '')),
+    }
 
 
 ## Load our feed tree widgets.
@@ -119,7 +130,11 @@ class MokshaFeedReaderWidget(LiveWidget):
     feed_tree = twc.Variable(default=feed_tree)
     feed_entries_tree = twc.Variable(default=feed_entries_tree)
 
-    resources = [splitter_js, splitter_css]
+    resources = [
+        jquery_cookies_js,
+        splitter_js,
+        splitter_css,
+    ]
 
     container_options = {
         'top': 50,
