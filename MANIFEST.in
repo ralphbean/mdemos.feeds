@@ -1,2 +1,3 @@
-recursive-include moksha/*/feeds/templates *
-recursive-include moksha/*/feeds/static *
+recursive-include mdemos/feeds/templates *
+recursive-include mdemos/feeds/widgets/templates *
+recursive-include mdemos/feeds/widgets/static *
