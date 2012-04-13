@@ -10,7 +10,7 @@ except ImportError:
 
 setup(
     name="mdemos.feeds",
-    version="0.1.0a",
+    version="0.1.1a",
     url="http://moksha.fedorahosted.org",
     description="Moksha Feeds App",
     license="ASL 2.0",

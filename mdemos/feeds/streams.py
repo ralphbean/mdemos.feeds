@@ -36,7 +36,7 @@ from feedcache import Cache
 from shove import Shove
 from tg import config
 
-from moksha.hub import MokshaHub
+from moksha.hub.hub import MokshaHub
 from moksha.api.hub.producer import PollingProducer
 
 log = logging.getLogger('moksha.hub')
